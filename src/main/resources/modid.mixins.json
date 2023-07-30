@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.minigame.home.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+  ],
+  "client": [
+    "OnPLayerConnectMixin",
+    "SnowBallMixin",
+    "EggMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
