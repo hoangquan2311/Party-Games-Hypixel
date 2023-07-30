@@ -40,12 +40,15 @@ public class InGameScoreboard extends ScoreboardDisplay {
         setLine(12,"§eNgười chơi: §a"+PLAYERS_ACTIVE);
         setLine(3,"§eGames: §a"+GAMES_PLAY_CURRENT+"/"+GAMES_PLAY);
         setLine(1, "§7"+LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm:ss a")));
-        String str="";
-        if(availableGames.size()==2)
-            str=" - index "+availableGames.get(0)+","+availableGames.get(1);
-        else if(availableGames.size()==1)
-            str=" - index "+availableGames.get(0);
+        StringBuilder str= new StringBuilder();
+        if(availableGames.size()>0){
+            str= new StringBuilder(" - index ");
+            for (Integer availableGame : availableGames) {
+                str.append(availableGame).append(",");
+            }
+        }
         setLine(4,"Games left: "+availableGames.size()+str);
+        //////
         if(getScore("game","index")==1 || getScore("game","index")==-1 || getScore("game","index")==11){
             setLine(13,"§eGame: §d§lWOOL CLAIM");
             if(getScore("game","index")==-1 || getScore("game","index")==11){
@@ -62,7 +65,9 @@ public class InGameScoreboard extends ScoreboardDisplay {
                 setLine(8,"§b"+WoolClaim.top3 + "§f: §a"+wool3);
                 setLine(6,"   ");
             }
-        } else if (getScore("game","index")==2 || getScore("game","index")==-2 || getScore("game","index")==12) {
+        }
+        ///////
+        else if (getScore("game","index")==2 || getScore("game","index")==-2 || getScore("game","index")==12) {
             setLine(13,"§eGame: §f§lSNOW RAIN");
             if(getScore("game","index")==-2 || getScore("game","index")==12){
                 setLine(10,"§b"+ Core.top1+"§f: §a"+star1+"§e★");
@@ -79,6 +84,24 @@ public class InGameScoreboard extends ScoreboardDisplay {
                 int t = getScore("waveWait","timer");
                 if(t>0) setLine(6,"§eNext rain in: §c§l"+(t/20+1));
                 else setLine(6,"   ");
+            }
+        }
+        //////
+        else if (getScore("game","index")==3 || getScore("game","index")==-3 || getScore("game","index")==13) {
+            setLine(13,"§eGame: §6§lEGG PAINTING");
+            if(getScore("game","index")==-3 || getScore("game","index")==13){
+                setLine(10,"§b"+ Core.top1+"§f: §a"+star1+"§e★");
+                setLine(9,"§b"+Core.top2+"§f: §a"+star2+"§e★");
+                setLine(8,"§b"+Core.top3+"§f: §a"+star3+"§e★");
+                if(getScore("game","index")==-3){
+                    setLine(6,"§eGame bắt đầu sau §c§l"+(getScore("cool3","timer")/20+1));
+                }
+            }
+            else {
+                setLine(10,"§b"+EggPaint.top1 + "§f: §a"+EggPaint.p1);
+                setLine(9,"§b"+EggPaint.top2 + "§f: §a"+EggPaint.p1);
+                setLine(8,"§b"+EggPaint.top3 + "§f: §a"+EggPaint.p1);
+                setLine(6,"   ");
             }
         }
 

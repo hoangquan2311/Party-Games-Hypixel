@@ -37,6 +37,20 @@ public class PlayerColor {
             }
         }
     }
+    public static void randomColorButWhite(){
+        Random random = new Random();
+        LinkedList<Color> availableColorsCopy = new LinkedList<>(availableColors);
+        availableColorsCopy.remove(new Color(Blocks.WHITE_WOOL, "WHITE", Formatting.WHITE));
+        playerColors.clear();
+        for (ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()) {
+            if(!isSpec(player) && !isAdmin(player)){
+                int randomIndex = random.nextInt(availableColorsCopy.size());
+                Color randomColor = availableColorsCopy.get(randomIndex);
+                playerColors.put(player.getUuid(), randomColor);
+                availableColorsCopy.remove(randomIndex);
+            }
+        }
+    }
     public static class Color {
         private final Block block;
         private final String color;

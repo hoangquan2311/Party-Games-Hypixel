@@ -20,11 +20,22 @@ public class SnowRain {
     public static String top1, top2, top3;
     private static int bossbarTime = 0;
     public static void snowRainTicks(){
-        if(getScore("game","index")==-2 && getScore("cool2","timer")==0){
-            setScore("game","index",2);
-            initialGame();
-            summonShelters();
-            top1 = top2 = top3 = "";
+        if(getScore("game","index")==-2){
+            if(getScore("cool2","timer")>0){
+                if(getScore("cool2","timer")<=100 && getScore("cool2","timer")%20==0){
+                    execute("/title @a title {\"text\":\""+getScore("cool2","timer")/20+"\",\"color\":\"red\",\"bold\":true}");
+                    execute("/execute as @a at @s run playsound block.lever.click ambient @s ~ ~ ~ 1 .7");
+                }
+                addScore("cool2","timer",-1);
+            }
+            else if(getScore("cool2","timer")==0){
+                execute("/title @a title \"\"");
+                execute("/title @a subtitle {\"text\":\"Start\",\"color\":\"green\"}");
+                execute("/execute as @a at @s run playsound entity.player.burp ambient @s");
+                setScore("game","index",2);
+                initialGame();
+                summonShelters();
+            }
         }
         else if(getScore("game","index")==2){
             gamePlay();
@@ -45,6 +56,7 @@ public class SnowRain {
     }
 
     private static void initialGame(){
+        top1 = top2 = top3 = "";
         CURRENT_WAVE = 1;
         SHELTER = 4;
         WAVE_SECONDS = 8;
@@ -84,8 +96,8 @@ public class SnowRain {
     private static void summonRain(){
         int drop = 1000;
         Random random = new Random();
-        BlockPos start = new BlockPos(-72, 52, 19);
-        BlockPos end = new BlockPos(-39, 52, 52);
+        BlockPos start = new BlockPos(-68, 52, 23);
+        BlockPos end = new BlockPos(-42, 52, 49);
         ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         for(int i=0;i<drop;i++){
             int x = random.nextInt(end.getX() - start.getX() + 1) + start.getX();

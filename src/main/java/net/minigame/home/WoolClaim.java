@@ -19,9 +19,8 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 
-import java.util.stream.Collectors;
-
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static net.minigame.home.Core.*;
 import static net.minigame.home.PlayerColor.playerColors;
@@ -33,18 +32,35 @@ public class WoolClaim {
     private static final long MIN_CLICK_INTERVAL = 300;
     public static String top1, top2, top3;
     public static Integer wool1, wool2, wool3;
+    private static int gameTimer;
     public static void woolClaimEventsReg(){
         clickBlockRegister();
     }
 
     public static void woolClaimTicks(){
-            if(getScore("game","index")==-1 && getScore("cool1","timer")==0){
-                top1=top2=top3="";
-                wool1=wool2=wool3=0;
-                randomColor();
-                setScore("game","index",1);
+            if(getScore("game","index")==-1){
+                if(getScore("cool1","timer")>0){
+                    if(getScore("cool1","timer")<=100 && getScore("cool1","timer")%20==0){
+                        execute("/title @a title {\"text\":\""+getScore("cool1","timer")/20+"\",\"color\":\"red\",\"bold\":true}");
+                        execute("/execute as @a at @s run playsound block.lever.click ambient @s ~ ~ ~ 1 .7");
+                    }
+                    addScore("cool1","timer",-1);
+                }
+                else if(getScore("cool1","timer")==0) {
+                    top1 = top2 = top3 = "";
+                    wool1 = wool2 = wool3 = 0;
+                    randomColor();
+                    execute("/title @a title \"\"");
+                    execute("/title @a subtitle {\"text\":\"Start\",\"color\":\"green\"}");
+                    execute("/execute as @a at @s run playsound entity.player.burp ambient @s");
+                    execute("/scoreboard players set @a woolCount 0");
+                    setScore("game", "index", 1);
+                    gameTimer = 1200;
+                }
             }
             else if(getScore("game","index")==1){
+                execute("/bossbar set minecraft:woolclaim name \"§eThời gian còn lại: §c§l"+gameTimer/20+"\"");
+                execute("/bossbar set minecraft:woolclaim value "+gameTimer);
                 for (ServerPlayerEntity play : MCserver.getPlayerManager().getPlayerList()) {
                     if(playerColors.containsKey(play.getUuid())){
                         play.sendMessage(color("§lBẠN LÀ "+playerColors.get(play.getUuid()).getColor()+"!",playerColors.get(play.getUuid()).getTextColor()), true);
@@ -52,8 +68,13 @@ public class WoolClaim {
                 }
                 //UPDATE TOP PLAYER
                 updateTop();
+                if(gameTimer>0){
+                    --gameTimer;
+                }
+                else if(gameTimer==0){
+                    endGame();
+                }
             }
-            endGame();
     }
     private static void updateTop(){
         Scoreboard scoreboard = MCserver.getScoreboard();
@@ -70,17 +91,15 @@ public class WoolClaim {
         wool3 = sortedScores.get(2).getScore();
     }
     private static void endGame(){
-        if(getScore("game1","timer")==0 && getScore("game","index")==1){
-            addScore(top1,"stars",3);
-            addScore(top2,"stars",2);
-            addScore(top3,"stars",1);
-            for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()) {
-                String msg = "§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n§f§l                       WOOL CLAIM\n\n  §e1ST   §7(§e★★★§7) - §e" + top1 + "\n   §62ND   §7(§e ★★§7) - " + top2 + "\n   §c3RD   §7(§e   ★§7) - " + top3 + "\n\n   §fBạn có "+getScore(player.getEntityName(),"stars")+" x §e★.\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
+        addScore(top1,"stars",3);
+        addScore(top2,"stars",2);
+        addScore(top3,"stars",1);
+        for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()) {
+            String msg = "§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n§d§l                       WOOL CLAIM\n\n  §e1ST   §7(§e★★★§7) - §e" + top1 + "\n   §62ND   §7(§e ★★§7) - " + top2 + "\n   §c3RD   §7(§e   ★§7) - " + top3 + "\n\n   §fBạn có "+getScore(player.getEntityName(),"stars")+" x §e★.\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬";
                 player.sendMessage(new LiteralText(msg), false);
             }
-            nextGame(1,top1);
-            resetWoolData();
-        }
+        nextGame(1,top1);
+        resetWoolData();
     }
     public static void resetWoolData(){
         execute("/scoreboard players reset * woolCount");

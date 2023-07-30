@@ -4,6 +4,10 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.ItemEntity;
+import net.minecraft.entity.boss.BossBar;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.scoreboard.Scoreboard;
@@ -14,13 +18,18 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -28,11 +37,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static net.minigame.home.EggPaint.*;
 import static net.minigame.home.InGameScoreboard.inGameSCBinit;
 import static net.minigame.home.InGameScoreboard.inGameScoreboardTicks;
 import static net.minigame.home.PlayerColor.createColors;
-import static net.minigame.home.ReadyScoreboard.*;
-import static net.minigame.home.SnowRain.*;
+import static net.minigame.home.ReadyScoreboard.readySCBinit;
+import static net.minigame.home.ReadyScoreboard.readyScoreboardTicks;
+import static net.minigame.home.SnowRain.resetSnowData;
+import static net.minigame.home.SnowRain.snowRainTicks;
 import static net.minigame.home.WoolClaim.*;
 
 public class Core implements ModInitializer {
@@ -44,8 +56,8 @@ public class Core implements ModInitializer {
 	public static int PLAYERS_ACTIVE;
 	public static int ALL_PLAYERS;
 	public static int PLAYERS_ALIVE;
-	private static final int GAMES_POOL = 2;
-	public static final int GAMES_PLAY = 2;
+	private static final int GAMES_POOL = 3;
+	public static final int GAMES_PLAY = 3;
 	public static int GAMES_PLAY_CURRENT;
 	private static final Map<UUID, Boolean> playerAttacking = new HashMap<>();
 	private static final List<Integer> gamesList = new ArrayList<>();
@@ -81,9 +93,11 @@ public class Core implements ModInitializer {
 						if (!playerAttacking.containsKey(player.getUuid()) || !playerAttacking.get(player.getUuid())) {
 							playerAttacking.put(player.getUuid(), true);
 							if (player.getStackInHand(Hand.MAIN_HAND).getItem() == Items.LIME_CONCRETE) {
-								setScore(player.getEntityName(), "clickGreen", 1);
+								player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1F);
+								MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("notready"));
 							} else if (player.getStackInHand(Hand.MAIN_HAND).getItem() == Items.RED_CONCRETE) {
-								setScore(player.getEntityName(), "clickRed", 1);
+								player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1.8F);
+								MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("ready"));
 							}
 						}
 					}
@@ -118,10 +132,12 @@ public class Core implements ModInitializer {
 					resetCoreData();
 					resetWoolData();
 					resetSnowData();
+					resetPaintData();
 					resetGamesList();
 				}
 				woolClaimTicks();
 				snowRainTicks();
+				eggPaintTicks();
 				inGameScoreboardTicks();
 			}
 		});
@@ -164,11 +180,13 @@ public class Core implements ModInitializer {
 			ItemStack heldItem = player.getStackInHand(hand);
 			if(getScore("game","index") == 0){
 				if (heldItem.getItem() == Items.LIME_CONCRETE){
-					setScore(player.getEntityName(),"clickGreen",1);
+					player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1F);
+					MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("notready"));
 					return TypedActionResult.success(heldItem);
 				}
 				else if (heldItem.getItem() == Items.RED_CONCRETE){
-					setScore(player.getEntityName(),"clickRed",1);
+					player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1.8F);
+					MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("ready"));
 					return TypedActionResult.success(heldItem);
 				}
 			}
@@ -183,7 +201,7 @@ public class Core implements ModInitializer {
 		for(int i=0; i<=10; i++){
 				executorService.schedule(() -> {
 					execute("/execute at @a[name="+ top1Name +"] run particle minecraft:firework ~ ~2 ~ .1 .1 .1 .6 10 force @a");
-					execute("/execute at @a[name="+ top1Name +"] run playsound minecraft:entity.cat.ambient ambient @a ~ ~ ~ 1 1.6");
+					execute("/execute at @a[name="+ top1Name +"] run playsound minecraft:entity.cat.ambient ambient @a ~ ~ ~ 3 1.6");
 				}, i, TimeUnit.SECONDS);
 		}
 		if(GAMES_PLAY_CURRENT < GAMES_PLAY){
@@ -219,7 +237,6 @@ public class Core implements ModInitializer {
 					player.giveItemStack(new ItemStack(Items.DIAMOND_SHOVEL).setCustomName(new LiteralText("§b§lRIGHT CLICK")));
 				}
 				reloadWoolArena();
-				execute("/scoreboard players set @a woolCount 0");
 				sendToAll("§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬§d§l\n                       WOOL CLAIM\n\n§eMục tiêu: Chiếm nhiều ô đất nhất bằng cây xẻng của bạn.\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
 				break;
 			case 2:
@@ -227,6 +244,10 @@ public class Core implements ModInitializer {
 				execute("/fill -67 27 24 -43 27 48 air");
 				sendToAll("§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬§f§l\n                       SNOW RAIN\n\n§eMục tiêu: Sống sót khỏi cơn mưa tuyết bằng cách núp dưới mái che!\n\n   §aBạn có thể đánh đối thủ từ §cRound 8 §atrở đi.\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
 				break;
+			case 3:
+				execute("/tp @a -64 21 -219 180 0");
+				reloadPainting();
+				sendToAll("§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬§6§l\n                       EGG PAINTING\n\n§eMục tiêu: Tô càng nhiều màu càng tốt bằng §ctrứng của bạn§e!.\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
 		}
 		execute("/execute as @a at @s run playsound minecraft:entity.player.levelup ambient @s ~ ~ ~ 1 1");
 		setScore("cool"+randomGame,"timer",200);
@@ -242,6 +263,7 @@ public class Core implements ModInitializer {
 		for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()){
 			addScore(player.getEntityName(),"allStars",getScore(player.getEntityName(),"stars"));
 		}
+		sendToAll("§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n§d§l                       SUMMARY\n\n  §e1ST   §7(§e★x"+star1+"§7) - §e" + top1 + "\n   §62ND   §7(§e★x"+star2+"§7) - " + top2 + "\n   §c3RD   §7(§e★x"+star3+"§7) - " + top3 + ".\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
 		execute("/scoreboard players reset * stars");
 		execute("/tp @a[name="+top1+"] -68 99.5 -76 180 25");
 		execute("/tp @a[name="+top2+"] -66 98.5 -76 180 25");
@@ -354,5 +376,12 @@ public class Core implements ModInitializer {
 	}
 	public static void execute(String cmd){
 		CMDManager.execute(CMDSource,cmd);
+	}
+	public static void killItem(Item item){
+		for (ItemEntity itemEntity : world.getEntitiesByType(EntityType.ITEM, new Box(new Vec3d(0, 0, 0), new Vec3d(0, 0, 0)), entity -> true)) {
+			if (itemEntity.getStack().getItem() == item) {
+				itemEntity.remove();
+			}
+		}
 	}
 }
