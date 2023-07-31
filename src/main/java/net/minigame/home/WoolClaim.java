@@ -124,7 +124,7 @@ public class WoolClaim {
                         player.swingHand(Hand.MAIN_HAND);
                         setWoolBlock(currentClickTime, Core.world, pos, player);
                     }
-                    return ActionResult.FAIL;
+                    return ActionResult.success(true);
                 }
             }
             return ActionResult.PASS;

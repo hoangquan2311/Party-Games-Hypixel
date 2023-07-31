@@ -94,7 +94,7 @@ public class SnowRain {
         }
     }
     private static void summonRain(){
-        int drop = 1000;
+        int drop = 700;
         Random random = new Random();
         BlockPos start = new BlockPos(-68, 52, 23);
         BlockPos end = new BlockPos(-42, 52, 49);

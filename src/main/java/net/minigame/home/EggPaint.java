@@ -8,6 +8,7 @@ import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.scoreboard.ScoreboardPlayerScore;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.LiteralText;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.Comparator;
@@ -47,12 +48,16 @@ public class EggPaint {
             killItem(Items.EGG);
             execute("/bossbar set minecraft:eggpaint name \"§eThời gian còn lại: §c§l"+gameTimer/20+"\"");
             execute("/bossbar set minecraft:eggpaint value "+gameTimer);
-            for (ServerPlayerEntity play : MCserver.getPlayerManager().getPlayerList()) {
-                if(playerColors.containsKey(play.getUuid())){
-                    play.sendMessage(color("§lBẠN LÀ "+playerColors.get(play.getUuid()).getColor()+"!",playerColors.get(play.getUuid()).getTextColor()), true);
+            for (ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()) {
+                if(playerColors.containsKey(player.getUuid())){
+                    player.sendMessage(color("§lBẠN LÀ "+playerColors.get(player.getUuid()).getColor()+"!",playerColors.get(player.getUuid()).getTextColor()), true);
                     ItemStack egg = new ItemStack(Items.EGG,64);
-                    if(!play.inventory.getStack(0).equals(egg))
-                        play.inventory.setStack(0, egg);
+                    if(!player.inventory.getStack(0).equals(egg))
+                        player.inventory.setStack(0, egg);
+                }
+                if(getScore(player.getEntityName(),"egg")>0){
+                    player.getItemCooldownManager().set(Items.EGG,4);
+                    setScore(player.getEntityName(),"egg",0);
                 }
             }
             updateTopPlayers();
@@ -98,9 +103,9 @@ public class EggPaint {
         top1 = sortedScores.get(0).getPlayerName();
         top2 = sortedScores.get(1).getPlayerName();
         top3 = sortedScores.get(2).getPlayerName();
-        p1 = sortedScores.get(0).getScore();
-        p2 = sortedScores.get(1).getScore();
-        p3 = sortedScores.get(2).getScore();
+        p1 = getScore(top1,"paintCount");
+        p2 = getScore(top2,"paintCount");
+        p3 = getScore(top3,"paintCount");
     }
     private static void endGame(){
         addScore(top1,"stars",3);
@@ -115,6 +120,8 @@ public class EggPaint {
     }
     public static void resetPaintData(){
         execute("/scoreboard players reset * paintCount");
+        execute("/scoreboard players reset * egg");
+        eggCooldowns.clear();
     }
     public static void reloadPainting(){
         execute("/fill -80 18 -245 -50 37 -245 minecraft:white_wool");

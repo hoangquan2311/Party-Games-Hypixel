@@ -4,9 +4,10 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.boss.BossBar;
+import net.minecraft.entity.projectile.thrown.EggEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -25,7 +26,6 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -64,6 +64,8 @@ public class Core implements ModInitializer {
 	public static LinkedList<Integer> availableGames = new LinkedList<>();
 	public static String top1, top2, top3;
 	public static Integer star1, star2, star3;
+	public static final Map<UUID, Long> eggCooldowns = new HashMap<>();
+	private static final long COOLDOWN_DURATION = 500;
 	public static final long SEED = 4527916943051099714L;
 	@Override
 	public void onInitialize() {
@@ -88,6 +90,12 @@ public class Core implements ModInitializer {
 			PLAYERS_ALIVE = getAlivePlayers();
 			PLAYERS_READY = getPlayersReady();
 			if(getScore("game","index")==0){
+				readyScoreboardTicks();
+				for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()){
+					if(!isAdmin(player) && player.getPos().getY()<70){
+						execute("/tp @a[name="+player.getEntityName()+"] -68 96 -81 180 0");
+					}
+				}
 				for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()){
 					if(player.handSwinging){
 						if (!playerAttacking.containsKey(player.getUuid()) || !playerAttacking.get(player.getUuid())) {
@@ -104,6 +112,16 @@ public class Core implements ModInitializer {
 					else {
 						playerAttacking.put(player.getUuid(), false);
 					}
+					if(getScore(player.getEntityName(),"index")==1){
+						player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1F);
+						MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("notready"));
+						setScore(player.getEntityName(),"index",0);
+					}
+					else if(getScore(player.getEntityName(),"index")==2){
+						player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1.8F);
+						MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("ready"));
+						setScore(player.getEntityName(),"index",0);
+					}
 				}
 				if(PLAYERS_READY == PLAYERS_ACTIVE && PLAYERS_ACTIVE>=3) {
 					//WHEN ALL PLAYERS ARE READY
@@ -112,12 +130,6 @@ public class Core implements ModInitializer {
 					top1 = top2 = top3 = "";
 					star1 = star2 = star3 = 0;
 					randomGame();
-				}
-				readyScoreboardTicks();
-				for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()){
-					if(!isAdmin(player) && player.getPos().getY()<70){
-						execute("/tp @a[name="+player.getEntityName()+"] -68 96 -81 180 0");
-					}
 				}
 			}
 			else if(getScore("game","index")!=0){
@@ -144,13 +156,19 @@ public class Core implements ModInitializer {
 	}
 
 	private void initialDataWhenOpen(){
+		gamesList.clear();
 		for(int i=1;i<=GAMES_POOL;i++){
 			gamesList.add(i);
 		}
+
 		top1 = top2 = top3 = "";
 		star1 = star2 = star3 = 0;
 		resetGamesList();
 		setScore("game","index",0);
+		resetCoreData();
+		resetWoolData();
+		resetSnowData();
+		resetPaintData();
 		PLAYERS_READY = 0;
 		PLAYERS_ACTIVE = 0;
 	}
@@ -178,15 +196,13 @@ public class Core implements ModInitializer {
 	private void registerRClickOnReady(){
 		UseItemCallback.EVENT.register((player, world, hand) -> {
 			ItemStack heldItem = player.getStackInHand(hand);
-			if(getScore("game","index") == 0){
+			if(getScore("game","index") == 0 && heldItem!=null){
 				if (heldItem.getItem() == Items.LIME_CONCRETE){
-					player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1F);
-					MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("notready"));
+					setScore(player.getEntityName(),"index",1);
 					return TypedActionResult.success(heldItem);
 				}
 				else if (heldItem.getItem() == Items.RED_CONCRETE){
-					player.playSound(SoundEvents.BLOCK_NOTE_BLOCK_PLING, SoundCategory.AMBIENT, 1F,1.8F);
-					MCserver.getScoreboard().addPlayerToTeam(player.getEntityName(),MCserver.getScoreboard().getTeam("ready"));
+					setScore(player.getEntityName(),"index",2);
 					return TypedActionResult.success(heldItem);
 				}
 			}
@@ -263,7 +279,7 @@ public class Core implements ModInitializer {
 		for(ServerPlayerEntity player : MCserver.getPlayerManager().getPlayerList()){
 			addScore(player.getEntityName(),"allStars",getScore(player.getEntityName(),"stars"));
 		}
-		sendToAll("§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n§d§l                       SUMMARY\n\n  §e1ST   §7(§e★x"+star1+"§7) - §e" + top1 + "\n   §62ND   §7(§e★x"+star2+"§7) - " + top2 + "\n   §c3RD   §7(§e★x"+star3+"§7) - " + top3 + ".\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
+		sendToAll("§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n                       SUMMARY\n\n  §e1ST   §7(§e★x"+star1+"§7) - §e" + top1 + "\n   §62ND   §7(§e★x"+star2+"§7) - " + top2 + "\n   §c3RD   §7(§e★x"+star3+"§7) - " + top3 + ".\n\n§a§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬");
 		execute("/scoreboard players reset * stars");
 		execute("/tp @a[name="+top1+"] -68 99.5 -76 180 25");
 		execute("/tp @a[name="+top2+"] -66 98.5 -76 180 25");

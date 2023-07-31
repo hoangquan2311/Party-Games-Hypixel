@@ -42,7 +42,7 @@ public class InGameScoreboard extends ScoreboardDisplay {
         setLine(1, "§7"+LocalDateTime.now().format(DateTimeFormatter.ofPattern("hh:mm:ss a")));
         StringBuilder str= new StringBuilder();
         if(availableGames.size()>0){
-            str= new StringBuilder(" - index ");
+            str= new StringBuilder(" - id: ");
             for (Integer availableGame : availableGames) {
                 str.append(availableGame).append(",");
             }
@@ -99,8 +99,8 @@ public class InGameScoreboard extends ScoreboardDisplay {
             }
             else {
                 setLine(10,"§b"+EggPaint.top1 + "§f: §a"+EggPaint.p1);
-                setLine(9,"§b"+EggPaint.top2 + "§f: §a"+EggPaint.p1);
-                setLine(8,"§b"+EggPaint.top3 + "§f: §a"+EggPaint.p1);
+                setLine(9,"§b"+EggPaint.top2 + "§f: §a"+EggPaint.p2);
+                setLine(8,"§b"+EggPaint.top3 + "§f: §a"+EggPaint.p3);
                 setLine(6,"   ");
             }
         }

@@ -36,7 +36,7 @@ public class EggMixin extends ThrownItemEntity {
 
     @Inject(at = @At("HEAD"), method = "onCollision",cancellable = true)
     protected void onCollision(HitResult hitResult, CallbackInfo ci){
-        if (getScore("game", "index") == 3) {
+        if (getScore("game", "index") == 3 && getOwner()!=null) {
             UUID uuid = getOwner().getUuid();
             if(playerColors.containsKey(uuid)){
                 BlockPos pos = new BlockPos(hitResult.getPos().add(0,0,-1));
